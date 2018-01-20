@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Andy giai tri do buon</title>
+    <script src="lib/phaser.min.js"></script>
+
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+    var score = 0;
+    var scoreText;
+    var game = new Phaser.Game(800, 600, Phaser.AUTO, '', {preload: preload, create: create, update: update});
+    var numOfStars = 6;
+    var numOfMonsters = 2;
+    var maxNumOfMonsters = 10;
+    var isGameOver = false;
+    var jumpStep = 0;
+
+
+    function preload() {
+        game.load.image('sky', 'assets/sky.png');
+        game.load.image('ground', 'assets/platform.png');
+        game.load.image('star', 'assets/star.png');
+        game.load.image('diamond', 'assets/diamond.png');
+        game.load.image('killmonster', 'assets/firstaid.png');
+        game.load.spritesheet('dude', 'assets/dude.png', 32, 48);
+        game.load.spritesheet('baddie', 'assets/baddie.png', 32, 32);
+    }
+
+    function create() {
+        createGameWorld();
+        stars = game.add.group();
+        boxes = game.add.group();
+        scoreText = game.add.text(16, 16, 'Score: 0', {fontSize: '15px', fill: '#000'});
+        gameText = game.add.text(game.world.width / 4, 0, 'Hanh trinh cua Sonhero', {fontSize: '25px', fill: '#000'});
+
+        stars.enableBody = true;
+        boxes.enableBody = true;
+        for (var i = 0; i < numOfStars; i++) {
+            var star = stars.create(i * 70, 0, 'star');
+            star.body.gravity.y = 100;
+            star.body.bounce.y = 0.7 + Math.random() * 0.2;
+        }
+
+        monsters = game.add.group();
+        monsters.enableBody = true;
+        for (var i = 0; i < numOfMonsters; i++) {
+            var monster = monsters.create(game.world.width / 2, game.world.height - 200, 'baddie');
+            monster.body.collideWorldBounds = true;
+            monster.body.gravity.y = 500;
+            monster.body.bounce.y = 0.2;
+            monster.direction = Math.random() < 0.5 ? -1 : 1;
+            monster.animations.add('right', [0, 1], 10, true);
+            monster.animations.add('left', [2, 3], 10, true);
+        }
+        game.time.events.loop(Phaser.Timer.SECOND * 2, changeMonsterDirection, this);
+        game.time.events.loop(Phaser.Timer.SECOND * 4, spawnStar, this);
+        game.time.events.loop(Phaser.Timer.SECOND * 5, addMonster, this);
+
+    }
+
+    function spawnStar() {
+        for (var i = 0; i < numOfStars; i++) {
+            var star = stars.create(Math.random() * game.world.width, 0, getItemType());
+            star.body.gravity.y = 200;
+            star.body.bounce.y = 0.7 + Math.random() * 0.2;
+        }
+        for (var i = 0; i < 3; i++) {
+            if (Math.random() < 0.2) {
+                var box = boxes.create(Math.random() * game.world.width, 0, 'killmonster');
+                box.body.gravity.y = 200;
+                box.body.bounce.y = 0.7 + Math.random() * 0.2;
+            }
+        }
+    }
+
+    function getItemType() {
+        var random = Math.random();
+        if (random < 0.7) return 'star';
+        return 'diamond';
+    }
+
+    function changeMonsterDirection() {
+        for (var i = 0; i < numOfMonsters; i++) {
+            monsters.getChildAt(i).direction = Math.random() < 0.5 ? -1 : 1;
+        }
+    }
+
+    function gameOver() {
+        isGameOver = true;
+        game.add.text(game.world.width / 4, game.world.height / 2, 'NGU NHU CHO :))', {
+            fontSize: '32px',
+            fill: '#ff0000'
+        });
+        game.add.text(game.world.width / 4, game.world.height / 2 + 60, 'Score: ' + score, {
+            fontSize: '32px',
+            fill: '#ff0000'
+        });
+    }
+
+    function detectCollision() {
+        var hitPlatform = game.physics.arcade.collide(player, platforms);
+        if (hitPlatform) jumpStep = 0;
+        game.physics.arcade.collide(stars, platforms);
+        game.physics.arcade.collide(boxes, platforms);
+        game.physics.arcade.collide(monsters, platforms);
+        game.physics.arcade.overlap(player, stars, touchStar, null, this);
+        game.physics.arcade.overlap(monsters, boxes, killMonster, null, this);
+        if (!isGameOver) {
+            game.physics.arcade.overlap(player, monsters, gameOver, null, this);
+        }
+    }
+
+    function handleUserInput() {
+        if (!isGameOver) {
+            cursors = game.input.keyboard.createCursorKeys();
+            player.body.velocity.x = 0;
+
+            if (cursors.left.isDown) {
+                player.body.velocity.x = -150;
+                player.animations.play('left');
+            }
+            else if (cursors.right.isDown) {
+                player.body.velocity.x = 150;
+                player.animations.play('right');
+            }
+            else {
+                player.animations.stop();
+                player.frame = 4;
+            }
+
+            if (cursors.up.isDown && jumpStep < 2) {
+                player.body.velocity.y = -300;
+                jumpStep++;
+            }
+        } else {
+            player.body.velocity.x = 0;
+            player.animations.stop();
+            player.frame = 4;
+        }
+    }
+
+    function update() {
+        detectCollision();
+        handleUserInput();
+
+        // update Monster's direction
+        for (var i = 0; i < numOfMonsters; i++) {
+            var monster = monsters.getChildAt(i);
+            var direction = monster.direction;
+            if (direction > 0) {
+                monster.animations.play('right');
+            } else {
+                monster.animations.play('left');
+            }
+            monsters.getChildAt(i).body.velocity.x = -100 * direction;
+        }
+
+    }
+
+    function touchStar(player, star) {
+       if (!isGameOver){
+           star.kill();
+           score += star.key === 'diamond' ? 10 : 1;
+           scoreText.text = 'Score: ' + score;
+       }
+    }
+
+    function killMonster(monster, box) {
+        monster.kill();
+        box.kill();
+    }
+
+    function addMonster() {
+        if (numOfMonsters == maxNumOfMonsters) return;
+        numOfMonsters++;
+        var monster = monsters.create(game.world.width * Math.random(), 0, 'baddie');
+        monster.body.collideWorldBounds = true;
+        monster.body.gravity.y = 500;
+        monster.body.bounce.y = 0.2;
+        monster.direction = Math.random() < 0.5 ? -1 : 1;
+        monster.animations.add('right', [0, 1], 10, true);
+        monster.animations.add('left', [2, 3], 10, true);
+    }
+
+    function createGameWorld() {
+        game.physics.startSystem(Phaser.Physics.ARCADE);
+        game.add.sprite(0, 0, 'sky');
+
+        platforms = game.add.group();
+        platforms.enableBody = true;
+        var ground = platforms.create(0, game.world.height - 64, 'ground');
+        ground.scale.setTo(2, 2);
+        ground.body.immovable = true;
+        player = game.add.sprite(32, game.world.height - 150, 'dude');
+        game.physics.arcade.enable(player);
+        player.body.bounce.y = 0.2;
+        player.body.gravity.y = 700;
+        player.body.collideWorldBounds = true;
+        player.animations.add('left', [0, 1, 2, 3], 10, true);
+        player.animations.add('right', [5, 6, 7, 8], 10, true);
+    }
+
+
+</script>
+
+</body>
+</html>
