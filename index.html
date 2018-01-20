@@ -180,6 +180,7 @@
 
     function addMonster() {
         if (monsters.countLiving() == maxNumOfMonsters) return;
+        numOfMonsters++;
         var monster = monsters.create(game.world.width * Math.random(), 0, 'baddie');
         monster.body.collideWorldBounds = true;
         monster.body.gravity.y = 500;
